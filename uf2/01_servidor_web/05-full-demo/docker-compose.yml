@@ -1,0 +1,21 @@
+services:
+  backend:
+    image: stefanprodan/podinfo:latest
+    deploy:
+      replicas: 4
+    networks:
+      - loadbalancing
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "8088:80"
+    networks:
+      - loadbalancing
+    volumes:
+      - ./default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - backend
+
+networks:
+  loadbalancing:

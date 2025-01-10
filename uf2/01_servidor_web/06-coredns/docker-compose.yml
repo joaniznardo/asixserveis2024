@@ -1,0 +1,15 @@
+services:
+  coredns:
+    image: coredns/coredns:latest
+    volumes:
+      - ./Corefile:/home/nonroot/Corefile:ro
+    ports:
+      - 5533:53/udp
+    networks:
+      - default
+      - 05-full-demo_loadbalancing
+
+networks:
+  05-full-demo_loadbalancing:
+    external: true
+

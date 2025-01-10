@@ -1,0 +1,65 @@
+#  https://github.com/karvounis/traefik-tutorial-docker-compose-files/blob/master/standalone/basic/docker-compose.yml
+services:
+  traefik:
+    image: traefik:latest
+    command:
+      # Entrypoints configuration
+      - --entrypoints.web.address=:80
+      # Docker provider configuration
+      - --providers.docker=true
+      # Makes sure that services have to explicitly direct Traefik to expose them
+      - --providers.docker.exposedbydefault=false
+      # Use the secure docker socket proxy
+      - --providers.docker.endpoint=tcp://socket_proxy:2375
+      # Default docker network to use for connections to all containers
+      - --providers.docker.network=traefik_public
+      # Logging levels are DEBUG, PANIC, FATAL, ERROR, WARN, and INFO.
+      - --log.level=info
+    ports:
+      - 80:80
+    networks:
+      - traefik_public
+      - socket_proxy
+    restart: unless-stopped
+    depends_on:
+      - socket_proxy
+
+  # https://github.com/traefik/whoami
+  # https://github.com/stefanprodan/podinfo
+  podinfo:
+    image: stefanprodan/podinfo:latest
+    labels:
+      # Explicitly instruct Traefik to expose this service
+      - traefik.enable=true
+      # Router configuration
+      ## Listen to the `web` entrypoint
+      - traefik.http.routers.podinfo_route.entrypoints=web
+      ## Rule based on the Host of the request
+      - traefik.http.routers.podinfo_route.rule=Host(`podinfo.traefik.me`)
+      - traefik.http.routers.podinfo_route.service=podinfo_service
+      # Service configuration
+      ## 80 is the port that the whoami container is listening to
+      - traefik.http.services.podinfo_service.loadbalancer.server.port=9898
+    networks:
+      - traefik_public
+
+  # https://github.com/Tecnativa/docker-socket-proxy
+  # Security-enhanced proxy for the Docker Socket
+  socket_proxy:
+    image: tecnativa/docker-socket-proxy:latest
+    restart: unless-stopped
+    environment:
+      NETWORKS: 1
+      SERVICES: 1
+      CONTAINERS: 1
+      TASKS: 1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - socket_proxy
+
+networks:
+  traefik_public:
+    external: true
+  socket_proxy:
+    external: true

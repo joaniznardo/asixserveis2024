@@ -1,0 +1,20 @@
+#version: '3'
+services:
+  traefik:
+    restart: unless-stopped
+    image: traefik:v2.0.2
+    command: --providers.docker=true
+    ports:
+      - "80:80"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+  app1:
+    image: containous/whoami
+    labels:
+      - traefik.http.routers.app1.rule=Host(`app1.traefik.me`)
+      - traefik.http.routers.www-router.rule=Host(`app.traefik.me`)
+      - traefik.http.routers.www-router.service=www-service
+      - traefik.http.services.www-service.loadbalancer.server.port=8000
+      - traefik.http.routers.admin-router.rule=Host(`admin.traefik.me`)
+      - traefik.http.routers.admin-router.service=admin-service
+      - traefik.http.services.admin-service.loadbalancer.server.port=9000

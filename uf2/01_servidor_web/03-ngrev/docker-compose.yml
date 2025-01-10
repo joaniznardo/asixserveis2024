@@ -1,0 +1,22 @@
+services:
+  nginx-01:
+    image: nginx:latest
+    volumes:
+      - ./html/docker01:/usr/share/nginx/html
+
+  nginx-02:
+    image: nginx:latest
+    volumes:
+      - ./html/docker02:/usr/share/nginx/html
+
+  nginx-reverse:
+    image: nginx:latest
+    ports:
+      - "8088:80"
+    volumes:
+      - ./conf.d:/etc/nginx/conf.d
+    depends_on:
+      - nginx-01
+      - nginx-02
+
+
