@@ -1,11 +1,4 @@
 services:
-  backend:
-    image: stefanprodan/podinfo:latest
-    deploy:
-      replicas: 4
-    networks:
-      - loadbalancing
-
   backend2:
     image: traefik/whoami:latest
     deploy:
@@ -22,7 +15,7 @@ services:
     volumes:
       - ./default.conf:/etc/nginx/conf.d/default.conf
     depends_on:
-      - backend
+      - backend2
 
 networks:
   loadbalancing:
