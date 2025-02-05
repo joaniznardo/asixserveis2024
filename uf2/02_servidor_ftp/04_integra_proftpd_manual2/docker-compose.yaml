@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  proftpd:
+    image: kibatic/proftpd
+      #network_mode: "host"
+    restart: unless-stopped
+    environment:
+      #FTP_LIST: "myusername:mypassword"
+      #USERADD_OPTIONS: "-o --gid 33 --uid 33"
+      # optional : default to 50000 and 50100
+      PASSIVE_MIN_PORT: 50000
+      PASSIVE_MAX_PORT: 50010
+      # optional : default to undefined
+      #      MASQUERADE_ADDRESS: 1.2.3.4
+    volumes:
+      - "./data/ftp:/home/proftpd"
+      - "./certs/proftpd.key:/etc/ssl/private/proftpd.key:ro"
+      - "./certs/proftpd.crt:/etc/ssl/certs/proftpd.crt:ro"
+      - "./proftpd-config/tls.conf:/etc/proftpd/tls.conf:ro"
+      - "./proftpd-config/comptes-virtuals:/etc/proftpd/conf.d/comptes-virtuals:ro"
+    ports:
+      - "21:21"  
+      - "50000-50010:50000-50010"
+    command: >
+      bash -c " sed -i '/mod_tls.c/s/^#//' /etc/proftpd/modules.conf &&  
+                sed -i '/tls/ s/^#//' /etc/proftpd/proftpd.conf && 
+                mkdir -m 700 -p /home/proftpd/{test01,test02} && chown 15001 /home/proftpd/test01 && chown 15002 /home/proftpd/test02 && 
+                touch /etc/proftpd/ftpd.passwd && chown proftpd: /etc/proftpd/ftpd.passwd && chmod ug=r,o-r /etc/proftpd/ftpd.passwd && 
+                echo 'c0ntr@sseny@01' | ftpasswd --stdin --passwd --file=/etc/proftpd/ftpd.passwd --name=test01 --uid=15001 --gid=15001 --home=/home/proftpd/test01 --shell=/bin/false && 
+                echo 'c0ntr@sseny@02' | ftpasswd --stdin --passwd --file=/etc/proftpd/ftpd.passwd --name=test02 --uid=15002 --gid=15002 --home=/home/proftpd/test02 --shell=/bin/false &&
+                proftpd --nodaemon"    
+    networks:
+      - webhosting_network
+
+  apache:
+    image: ubuntu/apache2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./data/ftp/test01:/var/www/html/http
+      - ./data/ftp/test02:/var/www/html/https
+      - ./certs:/etc/apache2/ssl
+      - ./apache-config:/etc/apache2/sites-enabled
+    environment:
+      - TZ=Europe/Madrid
+    command: >
+      bash -c "a2enmod ssl &&
+               a2enmod http2 &&
+               apache2ctl -D FOREGROUND"
+    depends_on:
+      - proftpd
+    restart: always
+    networks:
+      - webhosting_network
+
+
+networks:
+  webhosting_network:
+    driver: bridge
